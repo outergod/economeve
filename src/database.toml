@@ -1,0 +1,78 @@
+[Jackdaw]
+outcome = 1
+
+[Jackdaw.input]
+"Optimized Nano-Engines" = 2
+"Fused Nanomechanical Engines" = 2
+
+["Optimized Nano-Engines"]
+outcome = 1
+
+["Optimized Nano-Engines".input]
+"Fused Nanomechanical Engines" = 4
+"Powdered C-540 Graphite" = 2
+"Modified Fluid Router" = 3
+"Elecromechanical Hull Sheeting" = 10
+"PPD Fullerene Fibers" = 11
+"Lanthanum Metallofullerene" = 7
+"Graphene Nanoribbons" = 7
+
+["Lanthanum Metallofullerene"]
+outcome = 120
+
+["Lanthanum Metallofullerene".input]
+"Nocxium" = 200
+"Fullerite-C70" = 100
+"Fullerite-C84" = 100
+"Oxygen Fuel Block" = 5
+
+["Graphene Nanoribbons"]
+outcome = 120
+
+["Graphene Nanoribbons".input]
+"Nocxium" = 400
+"Fullerite-C28" = 100
+"Fullerite-C32" = 100
+"Nitrogen Fuel Block" = 5
+
+["Hydrogen Fuel Block"]
+outcome = 40
+
+["Hydrogen Fuel Block".input]
+"Enriched Uranium" = 4
+"Oxygen" = 22
+"Mechanical Parts" = 4
+"Coolant" = 9
+"Robotics" = 1
+"Heavy Water" = 170
+"Liquid Ozone" = 350
+"Strontium Clathrates" = 20
+"Hydrogen Isotopes" = 450
+
+["Oxygen Fuel Block"]
+outcome = 40
+
+["Oxygen Fuel Block".input]
+"Enriched Uranium" = 4
+"Oxygen" = 22
+"Mechanical Parts" = 4
+"Coolant" = 9
+"Robotics" = 1
+"Heavy Water" = 170
+"Liquid Ozone" = 350
+"Strontium Clathrates" = 20
+"Oxygen Isotopes" = 450
+
+["Nitrogen Fuel Block"]
+outcome = 40
+
+["Nitrogen Fuel Block".input]
+"Enriched Uranium" = 4
+"Oxygen" = 22
+"Mechanical Parts" = 4
+"Coolant" = 9
+"Robotics" = 1
+"Heavy Water" = 170
+"Liquid Ozone" = 350
+"Strontium Clathrates" = 20
+"Nitrogen Isotopes" = 450
