@@ -57,7 +57,6 @@ struct VerifiedCharacter {
 }
 
 fn blueprint_for(inv_type: &InvType, conn: &mut PgConnection) -> Option<IndustryActivityProduct> {
-    println!("Looking up blueprint for {:?}", inv_type.type_name);
     IndustryActivityProduct::belonging_to(&inv_type)
         .select(IndustryActivityProduct::as_select())
         .get_result(conn)
@@ -168,29 +167,34 @@ async fn esi_client(config: &Config) -> Result<Esi> {
     Ok(esi)
 }
 
+async fn character_assets(name: &str, config: &Config) -> Result<Vec<u64>> {
+    println!("Log in as {}", name);
+    let esi = esi_client(&config).await?;
+
+    let character = verify_character(esi.access_token.clone().unwrap()).await?;
+    assert_eq!(name, character.character_name);
+
+    Ok(esi
+        .group_assets()
+        .get_character_assets(character.character_id)
+        .await?
+        .iter()
+        .map(|asset| asset.type_id)
+        .collect())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     use self::schema::inv_types;
 
     let config = Config::new()?;
     let conn = &mut PgConnection::establish(&config.database_url)?;
-    let esi = esi_client(&config).await?;
 
-    println!("authenticated");
-
-    let character = verify_character(esi.access_token.clone().unwrap()).await?;
-
-    println!("{:?}", character);
-
-    let assets: Vec<_> = esi
-        .group_assets()
-        .get_character_assets(character.character_id)
-        .await?
-        .iter()
-        .map(|asset| asset.type_id)
-        .collect();
-
-    println!("{:?}", assets);
+    let mut assets = Vec::new();
+    for name in config.characters.iter() {
+        let mut a = character_assets(name, &config).await?;
+        assets.append(&mut a);
+    }
 
     let root = inv_types::table
         .filter(inv_types::type_name.eq(JACKDAW))
@@ -206,6 +210,7 @@ async fn main() -> Result<()> {
         match blueprint_for(&current, conn) {
             Some(blueprint) if assets.contains(&(blueprint.type_id as u64)) => {
                 println!("Found blueprint for {}", name);
+                println!("{:?}", blueprint);
                 for (material, quantity) in materials_for(&blueprint, quantity, conn)?.into_iter() {
                     stack.push((material, quantity));
                 }
