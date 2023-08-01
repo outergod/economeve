@@ -1,19 +1,33 @@
-use std::collections::HashMap;
 use std::io;
+use std::{collections::HashMap, sync::Arc};
 
+use axum::http::StatusCode;
+use axum::{
+    extract::{Query, State},
+    routing::get,
+    Router, Server,
+};
 use diesel::prelude::*;
 use diesel::PgConnection;
 use eyre::Result;
+use hyper::Method;
+use hyper::{body::Buf, Body, Client, Request};
+use hyper_tls::HttpsConnector;
+use rfesi::prelude::*;
+use serde::Deserialize;
 use serde::Serialize;
+use tokio::sync::mpsc::{self, Sender};
+use tokio::sync::Mutex;
 
 use crate::config::Config;
 use crate::models::*;
 
-// mod domain;
 mod config;
 pub mod models;
 pub mod schema;
 
+const VERIFY_URL: &str = "https://login.eveonline.com/oauth/verify";
+const USER_AGENT: &str = "economeve/1.0";
 const JACKDAW: &str = "Jackdaw";
 
 #[derive(Debug, Serialize)]
@@ -22,11 +36,46 @@ struct Material {
     quantity: i32,
 }
 
-fn materials_for(inv_type: &InvType, conn: &mut PgConnection) -> Result<Vec<(InvType, i32)>> {
+#[derive(Deserialize, Serialize)]
+pub struct EveRedirectRequest {
+    pub code: String,
+    pub state: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+#[allow(dead_code)]
+struct VerifiedCharacter {
+    #[serde(rename = "CharacterID")]
+    pub character_id: u64,
+    pub character_name: String,
+    pub expires_on: String,
+    pub scopes: String,
+    pub token_type: String,
+    pub character_owner_hash: String,
+    pub intellectual_property: String,
+}
+
+fn blueprint_for(inv_type: &InvType, conn: &mut PgConnection) -> Result<IndustryActivityProduct> {
+    Ok(IndustryActivityProduct::belonging_to(&inv_type)
+        .select(IndustryActivityProduct::as_select())
+        .get_result(conn)?)
+}
+
+fn materials_for(
+    inv_type: &InvType,
+    quantity: i32,
+    conn: &mut PgConnection,
+) -> Result<Vec<(InvType, i32)>> {
+    use self::schema::industry_activity_materials;
     use self::schema::inv_types;
 
-    Ok(InvTypeMaterial::belonging_to(&inv_type)
-        .select(InvTypeMaterial::as_select())
+    let blueprint = blueprint_for(inv_type, conn)?;
+    let quantity = (quantity as f32 / blueprint.quantity as f32).ceil() as i32;
+
+    Ok(industry_activity_materials::table
+        .filter(industry_activity_materials::type_id.eq(blueprint.type_id))
+        .select(IndustryActivityMaterial::as_select())
         .load(conn)?
         .into_iter()
         .map(|material| {
@@ -34,32 +83,126 @@ fn materials_for(inv_type: &InvType, conn: &mut PgConnection) -> Result<Vec<(Inv
                 .filter(inv_types::type_id.eq(material.material_type_id))
                 .select(InvType::as_select())
                 .get_result(conn)
-                .map(|r| (r, material.quantity))
+                .map(|r| (r, quantity * material.quantity))
         })
         .collect::<std::result::Result<Vec<_>, diesel::result::Error>>()?)
 }
 
-fn main() -> Result<()> {
+async fn oauth(
+    Query(redirect): Query<EveRedirectRequest>,
+    State(state): State<ServeState>,
+) -> Result<&'static str, StatusCode> {
+    let ServeState { state, tx } = state;
+    assert_eq!(state.as_str(), redirect.state.as_str());
+    tx.lock()
+        .await
+        .send(redirect.code.clone())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok("Success")
+}
+
+#[derive(Clone)]
+struct ServeState {
+    state: Arc<String>,
+    tx: Arc<Mutex<Sender<String>>>,
+}
+
+async fn serve(state: String, tx: Sender<String>) -> Result<()> {
+    let state = Arc::new(state);
+    let tx = Arc::new(Mutex::new(tx));
+    let app = Router::new()
+        .route("/oauth-callback", get(oauth))
+        .with_state(ServeState { state, tx });
+
+    println!("about to run server");
+    Server::bind(&"127.0.0.1:1337".parse()?)
+        .serve(app.into_make_service())
+        .await?;
+
+    Ok(())
+}
+
+async fn verify_character(token: String) -> Result<VerifiedCharacter> {
+    let https = HttpsConnector::new();
+    let client = Client::builder().build::<_, hyper::Body>(https);
+    let request = Request::builder()
+        .method(Method::GET)
+        .uri(VERIFY_URL)
+        .header("User-Agent", USER_AGENT)
+        .header("Authorization", format!("Bearer {}", token))
+        .body(Body::empty())?;
+    let response = client.request(request).await?;
+    let body = hyper::body::aggregate(response).await?;
+
+    Ok(serde_json::from_reader(body.reader())?)
+}
+
+async fn esi_client(config: &Config) -> Result<Esi> {
+    let mut esi = EsiBuilder::new()
+        .user_agent(USER_AGENT)
+        .client_id(&config.client_id)
+        .client_secret(&config.client_secret)
+        .callback_url(&config.redirect_url)
+        .scope(&config.scopes)
+        .build()?;
+
+    let (url, state) = esi.get_authorize_url()?;
+
+    let (tx, mut rx) = mpsc::channel(1);
+
+    let join = tokio::spawn(async move {
+        let _ = serve(state, tx).await;
+    });
+
+    println!("please open {}", url);
+    open::that(url)?;
+    let code = rx.recv().await.unwrap();
+
+    esi.authenticate(&code).await?;
+    esi.update_spec().await?;
+    join.abort();
+
+    Ok(esi)
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
     use self::schema::inv_types;
 
     let config = Config::new()?;
     let conn = &mut PgConnection::establish(&config.database_url)?;
+    let esi = esi_client(&config).await?;
+
+    println!("authenticated");
+
+    let character = verify_character(esi.access_token.clone().unwrap()).await?;
+
+    println!("{:?}", character);
+
+    let assets = esi
+        .group_assets()
+        .get_character_assets(character.character_id)
+        .await?;
+
+    println!("{:?}", assets);
 
     let root = inv_types::table
         .filter(inv_types::type_name.eq(JACKDAW))
         .select(InvType::as_select())
         .get_result(conn)?;
 
-    let mut stack = vec![root];
+    let mut stack = vec![(root, 1)];
     let mut result = HashMap::new();
 
-    while let Some(current) = stack.pop() {
-        let materials = materials_for(&current, conn)?;
+    while let Some((current, quantity)) = stack.pop() {
+        let materials = materials_for(&current, quantity, conn)?;
 
         for (material, quantity) in materials.into_iter() {
             if let Some(ref name) = material.type_name {
                 if config.blueprints.contains(&name) {
-                    stack.push(material);
+                    stack.push((material, quantity));
                 } else {
                     result
                         .entry(name.to_string())
@@ -72,9 +215,15 @@ fn main() -> Result<()> {
 
     let mut writer = csv::Writer::from_writer(io::stdout());
 
-    for material in result.iter() {
-        writer.serialize(material)?;
+    let mut keys: Vec<_> = result.keys().cloned().collect();
+    keys.sort();
+
+    for k in keys.iter() {
+        writer.serialize(result.get_key_value(k).unwrap())?;
     }
+    // for material in result.iter() {
+    //     writer.serialize(material)?;
+    // }
 
     writer.flush()?;
 

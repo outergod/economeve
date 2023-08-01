@@ -392,7 +392,7 @@ diesel::table! {
         type_id -> Int4,
         activity_id -> Int4,
         material_type_id -> Int4,
-        quantity -> Nullable<Int4>,
+        quantity -> Int4,
     }
 }
 
@@ -410,7 +410,7 @@ diesel::table! {
         type_id -> Int4,
         activity_id -> Int4,
         product_type_id -> Int4,
-        quantity -> Nullable<Int4>,
+        quantity -> Int4,
     }
 }
 
@@ -1114,6 +1114,7 @@ diesel::table! {
 }
 
 diesel::joinable!(inv_type_materials -> inv_types (type_id));
+diesel::joinable!(industry_activity_products -> inv_types (type_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     agt_agent_types,

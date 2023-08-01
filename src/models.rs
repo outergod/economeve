@@ -377,7 +377,7 @@ pub struct IndustryActivityMaterial {
     pub type_id: i32,
     pub activity_id: i32,
     pub material_type_id: i32,
-    pub quantity: Option<i32>,
+    pub quantity: i32,
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
@@ -390,14 +390,15 @@ pub struct IndustryActivityProbability {
     pub probability: Option<BigDecimal>,
 }
 
-#[derive(Queryable, Debug, Identifiable, Selectable)]
+#[derive(Queryable, Debug, Identifiable, Selectable, Associations)]
 #[diesel(table_name = crate::schema::industry_activity_products)]
 #[diesel(primary_key(type_id, activity_id, product_type_id))]
+#[diesel(belongs_to(InvType, foreign_key = product_type_id))]
 pub struct IndustryActivityProduct {
     pub type_id: i32,
     pub activity_id: i32,
     pub product_type_id: i32,
-    pub quantity: Option<i32>,
+    pub quantity: i32,
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]

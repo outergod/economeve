@@ -8,6 +8,10 @@ const DEFAULTS: &str = include_str!("config.toml");
 pub struct Config {
     pub blueprints: Vec<String>,
     pub database_url: String,
+    pub client_id: String,
+    pub client_secret: String,
+    pub redirect_url: String,
+    pub scopes: String,
 }
 
 impl Config {
