@@ -56,21 +56,22 @@ struct VerifiedCharacter {
     pub intellectual_property: String,
 }
 
-fn blueprint_for(inv_type: &InvType, conn: &mut PgConnection) -> Result<IndustryActivityProduct> {
-    Ok(IndustryActivityProduct::belonging_to(&inv_type)
+fn blueprint_for(inv_type: &InvType, conn: &mut PgConnection) -> Option<IndustryActivityProduct> {
+    println!("Looking up blueprint for {:?}", inv_type.type_name);
+    IndustryActivityProduct::belonging_to(&inv_type)
         .select(IndustryActivityProduct::as_select())
-        .get_result(conn)?)
+        .get_result(conn)
+        .ok()
 }
 
 fn materials_for(
-    inv_type: &InvType,
+    blueprint: &IndustryActivityProduct,
     quantity: i32,
     conn: &mut PgConnection,
 ) -> Result<Vec<(InvType, i32)>> {
     use self::schema::industry_activity_materials;
     use self::schema::inv_types;
 
-    let blueprint = blueprint_for(inv_type, conn)?;
     let quantity = (quantity as f32 / blueprint.quantity as f32).ceil() as i32;
 
     Ok(industry_activity_materials::table
@@ -181,10 +182,13 @@ async fn main() -> Result<()> {
 
     println!("{:?}", character);
 
-    let assets = esi
+    let assets: Vec<_> = esi
         .group_assets()
         .get_character_assets(character.character_id)
-        .await?;
+        .await?
+        .iter()
+        .map(|asset| asset.type_id)
+        .collect();
 
     println!("{:?}", assets);
 
@@ -197,18 +201,20 @@ async fn main() -> Result<()> {
     let mut result = HashMap::new();
 
     while let Some((current, quantity)) = stack.pop() {
-        let materials = materials_for(&current, quantity, conn)?;
+        let name = current.type_name.clone().unwrap();
 
-        for (material, quantity) in materials.into_iter() {
-            if let Some(ref name) = material.type_name {
-                if config.blueprints.contains(&name) {
+        match blueprint_for(&current, conn) {
+            Some(blueprint) if assets.contains(&(blueprint.type_id as u64)) => {
+                println!("Found blueprint for {}", name);
+                for (material, quantity) in materials_for(&blueprint, quantity, conn)?.into_iter() {
                     stack.push((material, quantity));
-                } else {
-                    result
-                        .entry(name.to_string())
-                        .and_modify(|e| *e += quantity)
-                        .or_insert(quantity);
                 }
+            }
+            Some(_) | None => {
+                result
+                    .entry(name)
+                    .and_modify(|e| *e += quantity)
+                    .or_insert(quantity);
             }
         }
     }
