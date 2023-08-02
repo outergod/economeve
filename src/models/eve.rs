@@ -6,8 +6,10 @@
 use bigdecimal::BigDecimal;
 use diesel::prelude::*;
 
+use crate::schema::eve as schema;
+
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::agt_agent_types)]
+#[diesel(table_name = schema::agt_agent_types)]
 #[diesel(primary_key(agent_type_id))]
 pub struct AgtAgentType {
     pub agent_type_id: i32,
@@ -15,7 +17,7 @@ pub struct AgtAgentType {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::agt_agents)]
+#[diesel(table_name = schema::agt_agents)]
 #[diesel(primary_key(agent_id))]
 pub struct AgtAgent {
     pub agent_id: i32,
@@ -29,7 +31,7 @@ pub struct AgtAgent {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::agt_agents_in_space)]
+#[diesel(table_name = schema::agt_agents_in_space)]
 #[diesel(primary_key(agent_id))]
 pub struct AgtAgentsInSpace {
     pub agent_id: i32,
@@ -40,7 +42,7 @@ pub struct AgtAgentsInSpace {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::agt_research_agents)]
+#[diesel(table_name = schema::agt_research_agents)]
 #[diesel(primary_key(agent_id, type_id))]
 pub struct AgtResearchAgent {
     pub agent_id: i32,
@@ -48,7 +50,7 @@ pub struct AgtResearchAgent {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::cert_certs)]
+#[diesel(table_name = schema::cert_certs)]
 #[diesel(primary_key(cert_id))]
 pub struct CertCert {
     pub cert_id: i32,
@@ -58,7 +60,7 @@ pub struct CertCert {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::cert_masteries)]
+#[diesel(table_name = schema::cert_masteries)]
 #[diesel(primary_key(type_id, mastery_level, cert_id))]
 pub struct CertMastery {
     pub type_id: i32,
@@ -67,7 +69,7 @@ pub struct CertMastery {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::cert_skills)]
+#[diesel(table_name = schema::cert_skills)]
 #[diesel(primary_key(cert_id, skill_id, cert_level_int, skill_level))]
 pub struct CertSkill {
     pub cert_id: i32,
@@ -78,7 +80,7 @@ pub struct CertSkill {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::chr_ancestries)]
+#[diesel(table_name = schema::chr_ancestries)]
 #[diesel(primary_key(ancestry_id))]
 pub struct ChrAncestry {
     pub ancestry_id: i32,
@@ -95,7 +97,7 @@ pub struct ChrAncestry {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::chr_attributes)]
+#[diesel(table_name = schema::chr_attributes)]
 #[diesel(primary_key(attribute_id))]
 pub struct ChrAttribute {
     pub attribute_id: i32,
@@ -107,7 +109,7 @@ pub struct ChrAttribute {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::chr_bloodlines)]
+#[diesel(table_name = schema::chr_bloodlines)]
 #[diesel(primary_key(bloodline_id))]
 pub struct ChrBloodline {
     pub bloodline_id: i32,
@@ -130,7 +132,7 @@ pub struct ChrBloodline {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::chr_factions)]
+#[diesel(table_name = schema::chr_factions)]
 #[diesel(primary_key(faction_id))]
 pub struct ChrFaction {
     pub faction_id: i32,
@@ -147,7 +149,7 @@ pub struct ChrFaction {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::chr_races)]
+#[diesel(table_name = schema::chr_races)]
 #[diesel(primary_key(race_id))]
 pub struct ChrRace {
     pub race_id: i32,
@@ -158,7 +160,7 @@ pub struct ChrRace {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::crp_activities)]
+#[diesel(table_name = schema::crp_activities)]
 #[diesel(primary_key(activity_id))]
 pub struct CrpActivity {
     pub activity_id: i32,
@@ -167,7 +169,7 @@ pub struct CrpActivity {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::crp_npc_corporation_divisions)]
+#[diesel(table_name = schema::crp_npc_corporation_divisions)]
 #[diesel(primary_key(corporation_id, division_id))]
 pub struct CrpNpcCorporationDivision {
     pub corporation_id: i32,
@@ -176,7 +178,7 @@ pub struct CrpNpcCorporationDivision {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::crp_npc_corporation_research_fields)]
+#[diesel(table_name = schema::crp_npc_corporation_research_fields)]
 #[diesel(primary_key(skill_id, corporation_id))]
 pub struct CrpNpcCorporationResearchField {
     pub skill_id: i32,
@@ -184,7 +186,7 @@ pub struct CrpNpcCorporationResearchField {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::crp_npc_corporation_trades)]
+#[diesel(table_name = schema::crp_npc_corporation_trades)]
 #[diesel(primary_key(corporation_id, type_id))]
 pub struct CrpNpcCorporationTrade {
     pub corporation_id: i32,
@@ -192,7 +194,7 @@ pub struct CrpNpcCorporationTrade {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::crp_npc_corporations)]
+#[diesel(table_name = schema::crp_npc_corporations)]
 #[diesel(primary_key(corporation_id))]
 pub struct CrpNpcCorporation {
     pub corporation_id: i32,
@@ -226,7 +228,7 @@ pub struct CrpNpcCorporation {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::crp_npc_divisions)]
+#[diesel(table_name = schema::crp_npc_divisions)]
 #[diesel(primary_key(division_id))]
 pub struct CrpNpcDivision {
     pub division_id: i32,
@@ -236,7 +238,7 @@ pub struct CrpNpcDivision {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::dgm_attribute_categories)]
+#[diesel(table_name = schema::dgm_attribute_categories)]
 #[diesel(primary_key(category_id))]
 pub struct DgmAttributeCategory {
     pub category_id: i32,
@@ -245,7 +247,7 @@ pub struct DgmAttributeCategory {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::dgm_attribute_types)]
+#[diesel(table_name = schema::dgm_attribute_types)]
 #[diesel(primary_key(attribute_id))]
 pub struct DgmAttributeType {
     pub attribute_id: i32,
@@ -262,7 +264,7 @@ pub struct DgmAttributeType {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::dgm_effects)]
+#[diesel(table_name = schema::dgm_effects)]
 #[diesel(primary_key(effect_id))]
 pub struct DgmEffect {
     pub effect_id: i32,
@@ -296,7 +298,7 @@ pub struct DgmEffect {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::dgm_expressions)]
+#[diesel(table_name = schema::dgm_expressions)]
 #[diesel(primary_key(expression_id))]
 pub struct DgmExpression {
     pub expression_id: i32,
@@ -312,7 +314,7 @@ pub struct DgmExpression {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::dgm_type_attributes)]
+#[diesel(table_name = schema::dgm_type_attributes)]
 #[diesel(primary_key(type_id, attribute_id))]
 pub struct DgmTypeAttribute {
     pub type_id: i32,
@@ -322,7 +324,7 @@ pub struct DgmTypeAttribute {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::dgm_type_effects)]
+#[diesel(table_name = schema::dgm_type_effects)]
 #[diesel(primary_key(type_id, effect_id))]
 pub struct DgmTypeEffect {
     pub type_id: i32,
@@ -331,7 +333,7 @@ pub struct DgmTypeEffect {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::eve_graphics)]
+#[diesel(table_name = schema::eve_graphics)]
 #[diesel(primary_key(graphic_id))]
 pub struct EveGraphic {
     pub graphic_id: i32,
@@ -343,7 +345,7 @@ pub struct EveGraphic {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::eve_icons)]
+#[diesel(table_name = schema::eve_icons)]
 #[diesel(primary_key(icon_id))]
 pub struct EveIcon {
     pub icon_id: i32,
@@ -352,7 +354,7 @@ pub struct EveIcon {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::eve_units)]
+#[diesel(table_name = schema::eve_units)]
 #[diesel(primary_key(unit_id))]
 pub struct EveUnit {
     pub unit_id: i32,
@@ -362,7 +364,7 @@ pub struct EveUnit {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::industry_activity)]
+#[diesel(table_name = schema::industry_activity)]
 #[diesel(primary_key(type_id, activity_id))]
 pub struct IndustryActivity {
     pub type_id: i32,
@@ -372,7 +374,7 @@ pub struct IndustryActivity {
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
 #[diesel(primary_key(type_id, activity_id, material_type_id))]
-#[diesel(table_name = crate::schema::industry_activity_materials)]
+#[diesel(table_name = schema::industry_activity_materials)]
 pub struct IndustryActivityMaterial {
     pub type_id: i32,
     pub activity_id: i32,
@@ -381,7 +383,7 @@ pub struct IndustryActivityMaterial {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::industry_activity_probabilities)]
+#[diesel(table_name = schema::industry_activity_probabilities)]
 #[diesel(primary_key(type_id, activity_id, product_type_id))]
 pub struct IndustryActivityProbability {
     pub type_id: i32,
@@ -391,7 +393,7 @@ pub struct IndustryActivityProbability {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable, Associations)]
-#[diesel(table_name = crate::schema::industry_activity_products)]
+#[diesel(table_name = schema::industry_activity_products)]
 #[diesel(primary_key(type_id, activity_id, product_type_id))]
 #[diesel(belongs_to(InvType, foreign_key = product_type_id))]
 pub struct IndustryActivityProduct {
@@ -402,7 +404,7 @@ pub struct IndustryActivityProduct {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::industry_activity_races)]
+#[diesel(table_name = schema::industry_activity_races)]
 #[diesel(primary_key(type_id, activity_id, product_type_id, race_id))]
 pub struct IndustryActivityRace {
     pub type_id: i32,
@@ -412,7 +414,7 @@ pub struct IndustryActivityRace {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::industry_activity_skills)]
+#[diesel(table_name = schema::industry_activity_skills)]
 pub struct IndustryActivitySkill {
     pub type_id: Option<i32>,
     pub activity_id: Option<i32>,
@@ -422,7 +424,7 @@ pub struct IndustryActivitySkill {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::industry_blueprints)]
+#[diesel(table_name = schema::industry_blueprints)]
 #[diesel(primary_key(type_id))]
 pub struct IndustryBlueprint {
     pub type_id: i32,
@@ -430,7 +432,7 @@ pub struct IndustryBlueprint {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::inv_categories)]
+#[diesel(table_name = schema::inv_categories)]
 #[diesel(primary_key(category_id))]
 pub struct InvCategory {
     pub category_id: i32,
@@ -440,7 +442,7 @@ pub struct InvCategory {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::inv_contraband_types)]
+#[diesel(table_name = schema::inv_contraband_types)]
 #[diesel(primary_key(faction_id, type_id))]
 pub struct InvContrabandType {
     pub faction_id: i32,
@@ -452,7 +454,7 @@ pub struct InvContrabandType {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::inv_control_tower_resource_purposes)]
+#[diesel(table_name = schema::inv_control_tower_resource_purposes)]
 #[diesel(primary_key(purpose))]
 pub struct InvControlTowerResourcePurpose {
     pub purpose: i32,
@@ -460,7 +462,7 @@ pub struct InvControlTowerResourcePurpose {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::inv_control_tower_resources)]
+#[diesel(table_name = schema::inv_control_tower_resources)]
 #[diesel(primary_key(control_tower_type_id, resource_type_id))]
 pub struct InvControlTowerResource {
     pub control_tower_type_id: i32,
@@ -472,7 +474,7 @@ pub struct InvControlTowerResource {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::inv_flags)]
+#[diesel(table_name = schema::inv_flags)]
 #[diesel(primary_key(flag_id))]
 pub struct InvFlag {
     pub flag_id: i32,
@@ -482,7 +484,7 @@ pub struct InvFlag {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::inv_groups)]
+#[diesel(table_name = schema::inv_groups)]
 #[diesel(primary_key(group_id))]
 pub struct InvGroup {
     pub group_id: i32,
@@ -497,7 +499,7 @@ pub struct InvGroup {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::inv_items)]
+#[diesel(table_name = schema::inv_items)]
 #[diesel(primary_key(item_id))]
 pub struct InvItem {
     pub item_id: i32,
@@ -509,7 +511,7 @@ pub struct InvItem {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::inv_market_groups)]
+#[diesel(table_name = schema::inv_market_groups)]
 #[diesel(primary_key(market_group_id))]
 pub struct InvMarketGroup {
     pub market_group_id: i32,
@@ -521,7 +523,7 @@ pub struct InvMarketGroup {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::inv_meta_groups)]
+#[diesel(table_name = schema::inv_meta_groups)]
 #[diesel(primary_key(meta_group_id))]
 pub struct InvMetaGroup {
     pub meta_group_id: i32,
@@ -531,7 +533,7 @@ pub struct InvMetaGroup {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::inv_meta_types)]
+#[diesel(table_name = schema::inv_meta_types)]
 #[diesel(primary_key(type_id))]
 pub struct InvMetaType {
     pub type_id: i32,
@@ -540,7 +542,7 @@ pub struct InvMetaType {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::inv_names)]
+#[diesel(table_name = schema::inv_names)]
 #[diesel(primary_key(item_id))]
 pub struct InvName {
     pub item_id: i32,
@@ -548,7 +550,7 @@ pub struct InvName {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::inv_positions)]
+#[diesel(table_name = schema::inv_positions)]
 #[diesel(primary_key(item_id))]
 pub struct InvPosition {
     pub item_id: i32,
@@ -561,7 +563,7 @@ pub struct InvPosition {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::inv_traits)]
+#[diesel(table_name = schema::inv_traits)]
 #[diesel(primary_key(trait_id))]
 pub struct InvTrait {
     pub trait_id: i32,
@@ -573,7 +575,7 @@ pub struct InvTrait {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable, Associations)]
-#[diesel(table_name = crate::schema::inv_type_materials)]
+#[diesel(table_name = schema::inv_type_materials)]
 #[diesel(primary_key(type_id, material_type_id))]
 #[diesel(belongs_to(InvType, foreign_key = type_id))]
 pub struct InvTypeMaterial {
@@ -583,7 +585,7 @@ pub struct InvTypeMaterial {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::inv_type_reactions)]
+#[diesel(table_name = schema::inv_type_reactions)]
 #[diesel(primary_key(reaction_type_id, input, type_id))]
 pub struct InvTypeReaction {
     pub reaction_type_id: i32,
@@ -593,7 +595,7 @@ pub struct InvTypeReaction {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::inv_types)]
+#[diesel(table_name = schema::inv_types)]
 #[diesel(primary_key(type_id))]
 pub struct InvType {
     pub type_id: i32,
@@ -614,7 +616,7 @@ pub struct InvType {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::inv_unique_names)]
+#[diesel(table_name = schema::inv_unique_names)]
 #[diesel(primary_key(item_id))]
 pub struct InvUniqueName {
     pub item_id: i32,
@@ -623,7 +625,7 @@ pub struct InvUniqueName {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::inv_volumes)]
+#[diesel(table_name = schema::inv_volumes)]
 #[diesel(primary_key(type_id))]
 pub struct InvVolume {
     pub type_id: i32,
@@ -631,7 +633,7 @@ pub struct InvVolume {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::map_celestial_graphics)]
+#[diesel(table_name = schema::map_celestial_graphics)]
 #[diesel(primary_key(celestial_id))]
 pub struct MapCelestialGraphic {
     pub celestial_id: i32,
@@ -642,7 +644,7 @@ pub struct MapCelestialGraphic {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::map_celestial_statistics)]
+#[diesel(table_name = schema::map_celestial_statistics)]
 #[diesel(primary_key(celestial_id))]
 pub struct MapCelestialStatistic {
     pub celestial_id: i32,
@@ -668,7 +670,7 @@ pub struct MapCelestialStatistic {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::map_constellation_jumps)]
+#[diesel(table_name = schema::map_constellation_jumps)]
 #[diesel(primary_key(from_constellation_id, to_constellation_id))]
 pub struct MapConstellationJump {
     pub from_region_id: Option<i32>,
@@ -678,7 +680,7 @@ pub struct MapConstellationJump {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::map_constellations)]
+#[diesel(table_name = schema::map_constellations)]
 #[diesel(primary_key(constellation_id))]
 pub struct MapConstellation {
     pub region_id: Option<i32>,
@@ -698,7 +700,7 @@ pub struct MapConstellation {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::map_denormalize)]
+#[diesel(table_name = schema::map_denormalize)]
 #[diesel(primary_key(item_id))]
 pub struct MapDenormalize {
     pub item_id: i32,
@@ -719,7 +721,7 @@ pub struct MapDenormalize {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::map_jumps)]
+#[diesel(table_name = schema::map_jumps)]
 #[diesel(primary_key(stargate_id))]
 pub struct MapJump {
     pub stargate_id: i32,
@@ -727,7 +729,7 @@ pub struct MapJump {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::map_landmarks)]
+#[diesel(table_name = schema::map_landmarks)]
 #[diesel(primary_key(landmark_id))]
 pub struct MapLandmark {
     pub landmark_id: i32,
@@ -741,7 +743,7 @@ pub struct MapLandmark {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::map_location_scenes)]
+#[diesel(table_name = schema::map_location_scenes)]
 #[diesel(primary_key(location_id))]
 pub struct MapLocationScene {
     pub location_id: i32,
@@ -749,7 +751,7 @@ pub struct MapLocationScene {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::map_location_wormhole_classes)]
+#[diesel(table_name = schema::map_location_wormhole_classes)]
 #[diesel(primary_key(location_id))]
 pub struct MapLocationWormholeClass {
     pub location_id: i32,
@@ -757,7 +759,7 @@ pub struct MapLocationWormholeClass {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::map_region_jumps)]
+#[diesel(table_name = schema::map_region_jumps)]
 #[diesel(primary_key(from_region_id, to_region_id))]
 pub struct MapRegionJump {
     pub from_region_id: i32,
@@ -765,7 +767,7 @@ pub struct MapRegionJump {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::map_regions)]
+#[diesel(table_name = schema::map_regions)]
 #[diesel(primary_key(region_id))]
 pub struct MapRegion {
     pub region_id: i32,
@@ -785,7 +787,7 @@ pub struct MapRegion {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::map_solar_system_jumps)]
+#[diesel(table_name = schema::map_solar_system_jumps)]
 #[diesel(primary_key(from_solar_system_id, to_solar_system_id))]
 pub struct MapSolarSystemJump {
     pub from_region_id: Option<i32>,
@@ -797,7 +799,7 @@ pub struct MapSolarSystemJump {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::map_solar_systems)]
+#[diesel(table_name = schema::map_solar_systems)]
 #[diesel(primary_key(solar_system_id))]
 pub struct MapSolarSystem {
     pub region_id: Option<i32>,
@@ -829,7 +831,7 @@ pub struct MapSolarSystem {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::map_universe)]
+#[diesel(table_name = schema::map_universe)]
 #[diesel(primary_key(universe_id))]
 pub struct MapUniverse {
     pub universe_id: i32,
@@ -847,7 +849,7 @@ pub struct MapUniverse {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::planet_schematics)]
+#[diesel(table_name = schema::planet_schematics)]
 #[diesel(primary_key(schematic_id))]
 pub struct PlanetSchematic {
     pub schematic_id: i32,
@@ -856,7 +858,7 @@ pub struct PlanetSchematic {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::planet_schematics_pin_map)]
+#[diesel(table_name = schema::planet_schematics_pin_map)]
 #[diesel(primary_key(schematic_id, pin_type_id))]
 pub struct PlanetSchematicsPinMap {
     pub schematic_id: i32,
@@ -864,7 +866,7 @@ pub struct PlanetSchematicsPinMap {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::planet_schematics_type_map)]
+#[diesel(table_name = schema::planet_schematics_type_map)]
 #[diesel(primary_key(schematic_id, type_id))]
 pub struct PlanetSchematicsTypeMap {
     pub schematic_id: i32,
@@ -874,7 +876,7 @@ pub struct PlanetSchematicsTypeMap {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::ram_activities)]
+#[diesel(table_name = schema::ram_activities)]
 #[diesel(primary_key(activity_id))]
 pub struct RamActivity {
     pub activity_id: i32,
@@ -885,7 +887,7 @@ pub struct RamActivity {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::ram_assembly_line_stations)]
+#[diesel(table_name = schema::ram_assembly_line_stations)]
 #[diesel(primary_key(station_id, assembly_line_type_id))]
 pub struct RamAssemblyLineStation {
     pub station_id: i32,
@@ -898,7 +900,7 @@ pub struct RamAssemblyLineStation {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::ram_assembly_line_type_detail_per_category)]
+#[diesel(table_name = schema::ram_assembly_line_type_detail_per_category)]
 #[diesel(primary_key(assembly_line_type_id, category_id))]
 pub struct RamAssemblyLineTypeDetailPerCategory {
     pub assembly_line_type_id: i32,
@@ -909,7 +911,7 @@ pub struct RamAssemblyLineTypeDetailPerCategory {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::ram_assembly_line_type_detail_per_group)]
+#[diesel(table_name = schema::ram_assembly_line_type_detail_per_group)]
 #[diesel(primary_key(assembly_line_type_id, group_id))]
 pub struct RamAssemblyLineTypeDetailPerGroup {
     pub assembly_line_type_id: i32,
@@ -920,7 +922,7 @@ pub struct RamAssemblyLineTypeDetailPerGroup {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::ram_assembly_line_types)]
+#[diesel(table_name = schema::ram_assembly_line_types)]
 #[diesel(primary_key(assembly_line_type_id))]
 pub struct RamAssemblyLineType {
     pub assembly_line_type_id: i32,
@@ -935,7 +937,7 @@ pub struct RamAssemblyLineType {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::ram_installation_type_contents)]
+#[diesel(table_name = schema::ram_installation_type_contents)]
 #[diesel(primary_key(installation_type_id, assembly_line_type_id))]
 pub struct RamInstallationTypeContent {
     pub installation_type_id: i32,
@@ -944,7 +946,7 @@ pub struct RamInstallationTypeContent {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::skin_license)]
+#[diesel(table_name = schema::skin_license)]
 #[diesel(primary_key(license_type_id))]
 pub struct SkinLicense {
     pub license_type_id: i32,
@@ -953,7 +955,7 @@ pub struct SkinLicense {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::skin_materials)]
+#[diesel(table_name = schema::skin_materials)]
 #[diesel(primary_key(skin_material_id))]
 pub struct SkinMaterial {
     pub skin_material_id: i32,
@@ -962,7 +964,7 @@ pub struct SkinMaterial {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::skin_ship)]
+#[diesel(table_name = schema::skin_ship)]
 #[diesel(primary_key(skin_id, type_id))]
 pub struct SkinShip {
     pub skin_id: i32,
@@ -970,7 +972,7 @@ pub struct SkinShip {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::skins)]
+#[diesel(table_name = schema::skins)]
 #[diesel(primary_key(skin_id))]
 pub struct Skin {
     pub skin_id: i32,
@@ -979,7 +981,7 @@ pub struct Skin {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::sta_operation_services)]
+#[diesel(table_name = schema::sta_operation_services)]
 #[diesel(primary_key(operation_id, service_id))]
 pub struct StaOperationService {
     pub operation_id: i32,
@@ -987,7 +989,7 @@ pub struct StaOperationService {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::sta_operations)]
+#[diesel(table_name = schema::sta_operations)]
 #[diesel(primary_key(operation_id))]
 pub struct StaOperation {
     pub activity_id: Option<i32>,
@@ -1007,7 +1009,7 @@ pub struct StaOperation {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::sta_services)]
+#[diesel(table_name = schema::sta_services)]
 #[diesel(primary_key(service_id))]
 pub struct StaService {
     pub service_id: i32,
@@ -1016,7 +1018,7 @@ pub struct StaService {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::sta_station_types)]
+#[diesel(table_name = schema::sta_station_types)]
 #[diesel(primary_key(station_type_id))]
 pub struct StaStationType {
     pub station_type_id: i32,
@@ -1033,7 +1035,7 @@ pub struct StaStationType {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::sta_stations)]
+#[diesel(table_name = schema::sta_stations)]
 #[diesel(primary_key(station_id))]
 pub struct StaStation {
     pub station_id: i64,
@@ -1057,7 +1059,7 @@ pub struct StaStation {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::translation_tables)]
+#[diesel(table_name = schema::translation_tables)]
 #[diesel(primary_key(source_table, translated_key))]
 pub struct TranslationTable {
     pub source_table: String,
@@ -1068,7 +1070,7 @@ pub struct TranslationTable {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::trn_translation_columns)]
+#[diesel(table_name = schema::trn_translation_columns)]
 #[diesel(primary_key(tc_id))]
 pub struct TrnTranslationColumn {
     pub tc_group_id: Option<i32>,
@@ -1079,7 +1081,7 @@ pub struct TrnTranslationColumn {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::trn_translation_languages)]
+#[diesel(table_name = schema::trn_translation_languages)]
 #[diesel(primary_key(numeric_language_id))]
 pub struct TrnTranslationLanguage {
     pub numeric_language_id: i32,
@@ -1088,7 +1090,7 @@ pub struct TrnTranslationLanguage {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::trn_translations)]
+#[diesel(table_name = schema::trn_translations)]
 #[diesel(primary_key(tc_id, key_id, language_id))]
 pub struct TrnTranslation {
     pub tc_id: i32,
@@ -1098,7 +1100,7 @@ pub struct TrnTranslation {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::war_combat_zone_systems)]
+#[diesel(table_name = schema::war_combat_zone_systems)]
 #[diesel(primary_key(solar_system_id))]
 pub struct WarCombatZoneSystem {
     pub solar_system_id: i32,
@@ -1106,7 +1108,7 @@ pub struct WarCombatZoneSystem {
 }
 
 #[derive(Queryable, Debug, Identifiable, Selectable)]
-#[diesel(table_name = crate::schema::war_combat_zones)]
+#[diesel(table_name = schema::war_combat_zones)]
 #[diesel(primary_key(combat_zone_id))]
 pub struct WarCombatZone {
     pub combat_zone_id: i32,

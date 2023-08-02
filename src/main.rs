@@ -1,3 +1,4 @@
+use std::fs;
 use std::io;
 use std::{collections::HashMap, sync::Arc};
 
@@ -8,7 +9,8 @@ use axum::{
     Router, Server,
 };
 use diesel::prelude::*;
-use diesel::PgConnection;
+use diesel::{PgConnection, SqliteConnection};
+use directories::ProjectDirs;
 use eyre::Result;
 use hyper::Method;
 use hyper::{body::Buf, Body, Client, Request};
@@ -20,7 +22,8 @@ use tokio::sync::mpsc::{self, Sender};
 use tokio::sync::Mutex;
 
 use crate::config::Config;
-use crate::models::*;
+use crate::models::eve::*;
+use crate::models::state::*;
 
 mod config;
 pub mod models;
@@ -68,8 +71,8 @@ fn materials_for(
     quantity: i32,
     conn: &mut PgConnection,
 ) -> Result<Vec<(InvType, i32)>> {
-    use self::schema::industry_activity_materials;
-    use self::schema::inv_types;
+    use self::schema::eve::industry_activity_materials;
+    use self::schema::eve::inv_types;
 
     let quantity = (quantity as f32 / blueprint.quantity as f32).ceil() as i32;
 
@@ -139,7 +142,53 @@ async fn verify_character(token: String) -> Result<VerifiedCharacter> {
     Ok(serde_json::from_reader(body.reader())?)
 }
 
-async fn esi_client(config: &Config) -> Result<Esi> {
+fn store_refresh_token(
+    state: &mut SqliteConnection,
+    character_id: String,
+    token: String,
+) -> Result<()> {
+    use crate::schema::state::characters::dsl::*;
+
+    let character = Character {
+        id: character_id,
+        refresh_token: token,
+    };
+
+    diesel::insert_into(characters)
+        .values(&character)
+        .on_conflict(id)
+        .do_update()
+        .set(&character)
+        .execute(state)?;
+
+    Ok(())
+}
+
+async fn authenticate(esi: &mut Esi) -> Result<()> {
+    let (url, state) = esi.get_authorize_url()?;
+    let (tx, mut rx) = mpsc::channel(1);
+
+    let join = tokio::spawn(async move {
+        let _ = serve(state, tx).await;
+    });
+
+    println!("Opening {}", url);
+    open::that(url)?;
+    let code = rx.recv().await.unwrap();
+
+    esi.authenticate(&code).await?;
+    join.abort();
+
+    Ok(())
+}
+
+async fn esi_client(
+    config: &Config,
+    character_id: &str,
+    state: &mut SqliteConnection,
+) -> Result<Esi> {
+    use crate::schema::state::characters::dsl::*;
+
     let mut esi = EsiBuilder::new()
         .user_agent(USER_AGENT)
         .client_id(&config.client_id)
@@ -148,28 +197,44 @@ async fn esi_client(config: &Config) -> Result<Esi> {
         .scope(&config.scopes)
         .build()?;
 
-    let (url, state) = esi.get_authorize_url()?;
-
-    let (tx, mut rx) = mpsc::channel(1);
-
-    let join = tokio::spawn(async move {
-        let _ = serve(state, tx).await;
-    });
-
-    println!("please open {}", url);
-    open::that(url)?;
-    let code = rx.recv().await.unwrap();
-
-    esi.authenticate(&code).await?;
     esi.update_spec().await?;
-    join.abort();
 
+    if let Ok(Some(character)) = characters
+        .find(character_id)
+        .select(Character::as_select())
+        .first(state)
+        .optional()
+    {
+        if esi
+            .use_refresh_token(&character.refresh_token)
+            .await
+            .is_ok()
+        {
+            store_refresh_token(
+                state,
+                character_id.to_string(),
+                esi.refresh_token.clone().unwrap(),
+            );
+            return Ok(esi);
+        }
+    }
+
+    authenticate(&mut esi).await?;
+    store_refresh_token(
+        state,
+        character_id.to_string(),
+        esi.refresh_token.clone().unwrap(),
+    );
     Ok(esi)
 }
 
-async fn character_assets(name: &str, config: &Config) -> Result<Vec<u64>> {
+async fn character_assets(
+    name: &str,
+    config: &Config,
+    state: &mut SqliteConnection,
+) -> Result<Vec<u64>> {
     println!("Log in as {}", name);
-    let esi = esi_client(&config).await?;
+    let esi = esi_client(config, name, state).await?;
 
     let character = verify_character(esi.access_token.clone().unwrap()).await?;
     assert_eq!(name, character.character_name);
@@ -183,16 +248,32 @@ async fn character_assets(name: &str, config: &Config) -> Result<Vec<u64>> {
         .collect())
 }
 
+fn state_db() -> Result<SqliteConnection> {
+    let dirs = ProjectDirs::from("dev", "outergod", "economeve")
+        .expect("Could not determine home directory! Quitting");
+    let state_dir = dirs.data_dir();
+    fs::create_dir_all(state_dir)?;
+
+    Ok(SqliteConnection::establish(&format!(
+        "sqlite://{}/{}",
+        state_dir
+            .to_str()
+            .expect("Invalid characters in path! Quitting"),
+        "state.sqlite"
+    ))?)
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
-    use self::schema::inv_types;
+    use self::schema::eve::inv_types;
 
     let config = Config::new()?;
     let conn = &mut PgConnection::establish(&config.database_url)?;
+    let mut state = state_db()?;
 
     let mut assets = Vec::new();
     for name in config.characters.iter() {
-        let mut a = character_assets(name, &config).await?;
+        let mut a = character_assets(name, &config, &mut state).await?;
         assets.append(&mut a);
     }
 
@@ -232,9 +313,6 @@ async fn main() -> Result<()> {
     for k in keys.iter() {
         writer.serialize(result.get_key_value(k).unwrap())?;
     }
-    // for material in result.iter() {
-    //     writer.serialize(material)?;
-    // }
 
     writer.flush()?;
 
