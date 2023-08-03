@@ -146,7 +146,8 @@ fn state_db() -> Result<SqliteConnection> {
 }
 
 async fn character_esi(character: Character, mut esi: Esi) -> Result<(i32, Esi)> {
-    if character.expiry.and_utc() > Utc::now() {
+    println!("{} vs {}", character.expiry.and_utc(), Utc::now());
+    if Utc::now() > character.expiry.and_utc() {
         esi.use_refresh_token(&character.refresh_token).await?;
     } else {
         esi.access_token = Some(character.access_token.clone());
@@ -239,7 +240,9 @@ async fn query(
         }
     }
 
-    let mut writer = csv::Writer::from_writer(vec![]);
+    let mut writer = csv::WriterBuilder::new()
+        .delimiter(b'\t')
+        .from_writer(vec![]);
 
     let mut keys: Vec<_> = result.keys().cloned().collect();
     keys.sort();
