@@ -1,3 +1,4 @@
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::sync::Arc;
 
@@ -10,11 +11,12 @@ use axum::{
 };
 use axum_sessions::SameSite;
 use axum_sessions::{async_session::MemoryStore, extractors::WritableSession, SessionLayer};
-use chrono::NaiveDateTime;
+use chrono::{NaiveDateTime, Utc};
 use diesel::prelude::*;
 use diesel::{PgConnection, SqliteConnection};
 use directories::ProjectDirs;
 use eyre::Result;
+use futures::future;
 use hyper::Method;
 use hyper::{body::Buf, Body, Client, Request};
 use hyper_tls::HttpsConnector;
@@ -49,6 +51,12 @@ pub struct EveRedirectRequest {
     pub state: String,
 }
 
+#[derive(Deserialize, Serialize)]
+pub struct QueryRequest {
+    pub material: String,
+    pub quantity: u32,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 #[allow(dead_code)]
@@ -78,13 +86,13 @@ fn blueprint_for(inv_type: &InvType, conn: &mut PgConnection) -> Option<Industry
 
 fn materials_for(
     blueprint: &IndustryActivityProduct,
-    quantity: i32,
+    quantity: u32,
     conn: &mut PgConnection,
-) -> Result<Vec<(InvType, i32)>> {
+) -> Result<Vec<(InvType, u32)>> {
     use self::schema::eve::industry_activity_materials;
     use self::schema::eve::inv_types;
 
-    let quantity = (quantity as f32 / blueprint.quantity as f32).ceil() as i32;
+    let quantity = (quantity as f32 / blueprint.quantity as f32).ceil() as u32;
 
     Ok(industry_activity_materials::table
         .filter(industry_activity_materials::type_id.eq(blueprint.type_id))
@@ -96,7 +104,7 @@ fn materials_for(
                 .filter(inv_types::type_id.eq(material.material_type_id))
                 .select(InvType::as_select())
                 .get_result(conn)
-                .map(|r| (r, quantity * material.quantity))
+                .map(|r| (r, quantity * material.quantity as u32))
         })
         .collect::<std::result::Result<Vec<_>, diesel::result::Error>>()?)
 }
@@ -116,38 +124,11 @@ async fn verify_character(token: String) -> Result<VerifiedCharacter> {
     Ok(serde_json::from_reader(body.reader())?)
 }
 
-// async fn character_assets(
-//     name: &str,
-//     config: &Config,
-//     state: &mut SqliteConnection,
-//     session: &mut WritableSession,
-// ) -> Result<Vec<u64>, Response> {
-//     println!("Log in as {}", name);
-//     let esi = esi_client(config, name, state, session).await?;
+async fn character_assets(id: i32, esi: &Esi) -> Result<Vec<u64>> {
+    let assets = esi.group_assets().get_character_assets(id as u64).await?;
 
-//     let character = verify_character(esi.access_token.clone().unwrap())
-//         .await
-//         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?;
-
-//     if name != character.character_name {
-//         return Err((
-//             StatusCode::BAD_REQUEST,
-//             format!(
-//                 "Logged in wrong character for {}: {}",
-//                 name, character.character_name
-//             ),
-//         )
-//             .into_response());
-//     }
-
-//     let assets = esi
-//         .group_assets()
-//         .get_character_assets(character.character_id)
-//         .await
-//         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?;
-
-//     Ok(assets.iter().map(|asset| asset.type_id).collect())
-// }
+    Ok(assets.iter().map(|asset| asset.type_id).collect())
+}
 
 fn state_db() -> Result<SqliteConnection> {
     let dirs = ProjectDirs::from("dev", "outergod", "economeve")
@@ -164,87 +145,120 @@ fn state_db() -> Result<SqliteConnection> {
     ))?)
 }
 
-// #[axum::debug_handler]
-// async fn query(
-//     Path(material): Path<String>,
-//     State(state): State<Arc<AppState>>,
-//     mut session: WritableSession,
-// ) -> Result<String, Response> {
-//     use crate::schema::eve::inv_types::dsl::*;
+async fn character_esi(character: Character, mut esi: Esi) -> Result<(i32, Esi)> {
+    if character.expiry.and_utc() > Utc::now() {
+        esi.use_refresh_token(&character.refresh_token).await?;
+    } else {
+        esi.access_token = Some(character.access_token.clone());
+        esi.access_expiration = Some(character.expiry.timestamp_millis() as u128);
+        esi.refresh_token = Some(character.refresh_token.clone());
+    }
 
-//     if session.insert("query", material.clone()).is_err() {
-//         return Err((
-//             StatusCode::INTERNAL_SERVER_ERROR,
-//             "Could not store session data".to_string(),
-//         )
-//             .into_response());
-//     }
+    Ok((character.id, esi))
+}
 
-//     let mut state_db = state.state_db.lock().await;
-//     let mut eve_db = state.eve_db.lock().await;
+async fn query(
+    Query(query): Query<QueryRequest>,
+    State(state): State<Arc<AppState>>,
+) -> Result<String, Response> {
+    use crate::schema::eve::inv_types;
+    use crate::schema::state::characters;
 
-//     let config = &state.config;
+    let mut state_db = state.state_db.lock().await;
+    let mut eve_db = state.eve_db.lock().await;
+    let config = &state.config;
 
-//     let mut assets = Vec::new();
-//     for name in config.characters.iter() {
-//         let mut a = character_assets(name, &config, &mut state_db, &mut session).await?;
-//         assets.append(&mut a);
-//     }
+    let mut esi = esi_client(config)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?;
 
-//     let root = inv_types
-//         .filter(type_name.eq(Some(material)))
-//         .select(InvType::as_select())
-//         .get_result(&mut *eve_db)
-//         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?;
+    esi.update_spec()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?;
 
-//     let mut stack = vec![(root, 1)];
-//     let mut result = HashMap::new();
+    let esis: Vec<_> = future::try_join_all(
+        characters::table
+            .select(Character::as_select())
+            .load(&mut *state_db)
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?
+            .into_iter()
+            .map(|c| character_esi(c, esi.clone())),
+    )
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?;
 
-//     while let Some((current, quantity)) = stack.pop() {
-//         let name = current.type_name.clone().unwrap();
+    let mut assets = HashSet::new();
+    for (character_id, esi) in esis.into_iter() {
+        println!("Assets for character {}", character_id);
+        let mut a = character_assets(character_id, &esi)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?
+            .into_iter();
+        assets.extend(&mut a);
+    }
 
-//         match blueprint_for(&current, &mut eve_db) {
-//             Some(blueprint) if assets.contains(&(blueprint.type_id as u64)) => {
-//                 println!("Found blueprint for {}", name);
-//                 println!("{:?}", blueprint);
-//                 for (material, quantity) in materials_for(&blueprint, quantity, &mut eve_db)
-//                     .map_err(|e| {
-//                         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response()
-//                     })?
-//                     .into_iter()
-//                 {
-//                     stack.push((material, quantity));
-//                 }
-//             }
-//             Some(_) | None => {
-//                 result
-//                     .entry(name)
-//                     .and_modify(|e| *e += quantity)
-//                     .or_insert(quantity);
-//             }
-//         }
-//     }
+    println!("{:?}", assets);
 
-//     let mut writer = csv::Writer::from_writer(vec![]);
+    let root = inv_types::table
+        .filter(inv_types::type_name.eq(Some(query.material)))
+        .select(InvType::as_select())
+        .get_result(&mut *eve_db)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?;
 
-//     let mut keys: Vec<_> = result.keys().cloned().collect();
-//     keys.sort();
+    let mut stack = vec![(root, query.quantity)];
+    let mut result = HashMap::new();
 
-//     for k in keys.iter() {
-//         writer
-//             .serialize(result.get_key_value(k).unwrap())
-//             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?;
-//     }
+    while let Some((current, quantity)) = stack.pop() {
+        let name = current.type_name.clone().unwrap();
 
-//     let result = String::from_utf8(
-//         writer
-//             .into_inner()
-//             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?,
-//     )
-//     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?;
+        match blueprint_for(&current, &mut eve_db) {
+            Some(blueprint) if assets.contains(&(blueprint.type_id as u64)) => {
+                println!("Found blueprint for {}", name);
+                println!("{:?}", blueprint);
+                for (material, quantity) in materials_for(&blueprint, quantity, &mut eve_db)
+                    .map_err(|e| {
+                        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response()
+                    })?
+                    .into_iter()
+                {
+                    stack.push((material, quantity));
+                }
+            }
+            Some(blueprint) => {
+                println!("Could not find blueprint {}", blueprint.type_id);
+                result
+                    .entry(name)
+                    .and_modify(|e| *e += quantity)
+                    .or_insert(quantity);
+            }
+            None => {
+                result
+                    .entry(name)
+                    .and_modify(|e| *e += quantity)
+                    .or_insert(quantity);
+            }
+        }
+    }
 
-//     Ok(result)
-// }
+    let mut writer = csv::Writer::from_writer(vec![]);
+
+    let mut keys: Vec<_> = result.keys().cloned().collect();
+    keys.sort();
+
+    for k in keys.iter() {
+        writer
+            .serialize(result.get_key_value(k).unwrap())
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?;
+    }
+
+    let result = String::from_utf8(
+        writer
+            .into_inner()
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?,
+    )
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?;
+
+    Ok(result)
+}
 
 async fn register_character(
     State(state): State<Arc<AppState>>,
@@ -282,7 +296,6 @@ async fn oauth(
     mut session: WritableSession,
 ) -> Result<String, Response> {
     use crate::schema::state::characters::dsl::*;
-    use crate::schema::state::tokens::dsl::*;
 
     let config = &state.config;
     let mut state_db = state.state_db.lock().await;
@@ -312,34 +325,26 @@ async fn oauth(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?;
 
-    diesel::insert_into(characters)
-        .values(Character {
-            id: character.character_id.clone(),
-            name: character.character_name.clone(),
-        })
-        .on_conflict_do_nothing()
-        .execute(&mut *state_db)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?;
-
-    let token = Token {
-        character_id: character.character_id.clone(),
+    let character = Character {
+        id: character.character_id.clone(),
+        name: character.character_name.clone(),
         access_token: esi.access_token.unwrap().clone(),
         refresh_token: esi.refresh_token.unwrap().clone(),
-        expiry: NaiveDateTime::from_timestamp_micros(esi.access_expiration.unwrap().clone() as i64)
+        expiry: NaiveDateTime::from_timestamp_millis(esi.access_expiration.unwrap().clone() as i64)
             .unwrap(),
     };
 
-    diesel::insert_into(tokens)
-        .values(&token)
-        .on_conflict(character_id)
+    diesel::insert_into(characters)
+        .values(&character)
+        .on_conflict(id)
         .do_update()
-        .set(&token)
+        .set(&character)
         .execute(&mut *state_db)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?;
 
     Ok(format!(
         "Character {} ({}) registered",
-        &character.character_name, &character.character_id
+        &character.name, &character.id
     ))
 }
 
@@ -363,10 +368,9 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let app = Router::new()
-        // .route("/oauth-callback", get(oauth))
-        // .route("/query/:material", get(query))
         .route("/register", get(register_character))
         .route("/oauth-callback", get(oauth))
+        .route("/query", get(query))
         .with_state(state)
         .layer(
             ServiceBuilder::new()

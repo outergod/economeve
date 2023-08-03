@@ -661,6 +661,7 @@ dependencies = [
  "directories",
  "dotenvy",
  "eyre",
+ "futures",
  "hyper",
  "hyper-tls",
  "rand",

@@ -1,10 +1,9 @@
-use config::{ConfigError, Environment, File, FileFormat};
+use config::{ConfigError, Environment};
 use dotenvy::dotenv;
 use serde::Deserialize;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Config {
-    pub characters: Vec<String>,
     pub database_url: String,
     pub client_id: String,
     pub client_secret: String,
@@ -17,7 +16,6 @@ impl Config {
         dotenv().ok();
 
         config::Config::builder()
-            .add_source(File::new("config.toml", FileFormat::Toml))
             .add_source(Environment::default())
             .build()?
             .try_deserialize()
