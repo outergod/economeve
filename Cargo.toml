@@ -4,21 +4,26 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-axum = "0.6.19"
+axum = { version = "0.6.19", features = ["macros"] }
+axum-sessions = "0.5.0"
 bigdecimal = "0.3.1"
+chrono = "0.4.26"
 config = "0.13.3"
 csv = "1.2.2"
-diesel = { version = "2.1.0", features = ["postgres", "numeric", "sqlite"] }
+diesel = { version = "2.1.0", features = ["postgres", "numeric", "sqlite", "returning_clauses_for_sqlite_3_35", "chrono"] }
 directories = "5.0.1"
 dotenvy = "0.15.7"
 eyre = "0.6.8"
 hyper = "0.14.27"
 hyper-tls = "0.5.0"
-open = "5.0.0"
+rand = "0.8.5"
 rfesi = "0.17.0"
 serde = { version = "1.0.174", features = ["derive"] }
 serde_json = "1.0.104"
 serde_yaml = "0.9.25"
 tokio = { version = "1.29.1", features = ["full"] }
 toml = "0.7.6"
+tower = "0.4.13"
+tower-http = { version = "0.4.3", features = ["trace"] }
+tracing-subscriber = "0.3.17"
 zip = "0.6.6"
