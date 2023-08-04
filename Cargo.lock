@@ -1698,8 +1698,6 @@ dependencies = [
 [[package]]
 name = "rfesi"
 version = "0.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "357da70c785dff1cb78afc3cd09a74642e07ba81aa1cf7552ccbf6f0d06cec05"
 dependencies = [
  "alcoholic_jwt",
  "base64 0.21.2",

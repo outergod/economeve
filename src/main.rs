@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs;
 use std::sync::Arc;
 
@@ -124,10 +124,42 @@ async fn verify_character(token: String) -> Result<VerifiedCharacter> {
     Ok(serde_json::from_reader(body.reader())?)
 }
 
-async fn character_assets(id: i32, esi: &Esi) -> Result<Vec<u64>> {
+async fn character_assets(id: i32, esi: &Esi) -> Result<Vec<(u64, u64)>> {
     let assets = esi.group_assets().get_character_assets(id as u64).await?;
+    Ok(assets
+        .into_iter()
+        .map(|a| (a.type_id, a.quantity))
+        .collect())
+}
 
-    Ok(assets.iter().map(|asset| asset.type_id).collect())
+#[derive(Debug)]
+enum Blueprint {
+    Original,
+    Copy { runs: u32 },
+}
+
+async fn character_blueprints(id: i32, esi: &Esi) -> Result<Vec<(u64, Blueprint)>> {
+    let blueprints = esi.group_character().get_blueprints(id as u64).await?;
+
+    // https://esi.evetech.net/ui/#/Character/get_characters_character_id_blueprints
+    // > A range of numbers with a minimum of -2 and no maximum value where -1 is
+    // > an original and -2 is a copy. It can be a positive integer if it is a
+    // > stack of blueprint originals fresh from the market (e.g. no activities
+    // > performed on them yet).
+    Ok(blueprints
+        .into_iter()
+        .map(|bp| {
+            (
+                bp.type_id,
+                match bp.quantity {
+                    -2 => Blueprint::Copy {
+                        runs: bp.runs as u32,
+                    },
+                    _ => Blueprint::Original,
+                },
+            )
+        })
+        .collect())
 }
 
 fn state_db() -> Result<SqliteConnection> {
@@ -187,17 +219,51 @@ async fn query(
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?;
 
-    let mut assets = HashSet::new();
-    for (character_id, esi) in esis.into_iter() {
+    let mut assets = HashMap::new();
+
+    for (character_id, esi) in esis.iter() {
         println!("Assets for character {}", character_id);
-        let mut a = character_assets(character_id, &esi)
+        let a = character_assets(*character_id, esi)
             .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?
-            .into_iter();
-        assets.extend(&mut a);
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?;
+
+        for (type_id, quantity) in a {
+            assets
+                .entry(type_id)
+                .and_modify(|n| *n += quantity)
+                .or_insert(quantity);
+        }
     }
 
     println!("{:?}", assets);
+
+    let mut blueprints = HashMap::new();
+
+    for (character_id, esi) in esis.iter() {
+        println!("Blueprints for character {}", character_id);
+        let bps = character_blueprints(*character_id, esi)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?;
+
+        for (type_id, bp) in bps {
+            match bp {
+                Blueprint::Original => {
+                    blueprints.insert(type_id.clone(), bp);
+                }
+                Blueprint::Copy { runs: runs_add } => match blueprints.get_mut(&type_id) {
+                    Some(Blueprint::Original) => {}
+                    Some(Blueprint::Copy { runs }) => {
+                        *runs += runs_add;
+                    }
+                    None => {
+                        blueprints.insert(type_id.clone(), bp);
+                    }
+                },
+            }
+        }
+    }
+
+    println!("{:?}", blueprints);
 
     let root = inv_types::table
         .filter(inv_types::type_name.eq(Some(query.material)))
@@ -208,34 +274,59 @@ async fn query(
     let mut stack = vec![(root, query.quantity)];
     let mut result = HashMap::new();
 
-    while let Some((current, quantity)) = stack.pop() {
+    while let Some((current, mut quantity)) = stack.pop() {
+        if let Some(entry) = assets.get_mut(&(current.type_id as u64)) {
+            let covered = quantity.min(*entry as u32);
+            quantity -= covered;
+            *entry -= covered as u64;
+        }
+
+        if quantity == 0 {
+            continue;
+        }
+
         let name = current.type_name.clone().unwrap();
 
-        match blueprint_for(&current, &mut eve_db) {
-            Some(blueprint) if assets.contains(&(blueprint.type_id as u64)) => {
-                println!("Found blueprint for {}", name);
-                println!("{:?}", blueprint);
-                for (material, quantity) in materials_for(&blueprint, quantity, &mut eve_db)
-                    .map_err(|e| {
-                        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response()
-                    })?
-                    .into_iter()
-                {
-                    stack.push((material, quantity));
-                }
-            }
-            Some(blueprint) => {
-                println!("Could not find blueprint {}", blueprint.type_id);
-                result
-                    .entry(name)
-                    .and_modify(|e| *e += quantity)
-                    .or_insert(quantity);
-            }
+        let bp = match blueprint_for(&current, &mut eve_db) {
+            Some(bp) => bp,
             None => {
                 result
                     .entry(name)
                     .and_modify(|e| *e += quantity)
                     .or_insert(quantity);
+                continue;
+            }
+        };
+
+        let (buy, produce) = match blueprints.get_mut(&(bp.type_id as u64)) {
+            Some(Blueprint::Original) => {
+                println!("Found blueprint original for {}", name);
+                (0, quantity)
+            }
+            Some(Blueprint::Copy { runs }) => {
+                println!(
+                    "Found blueprint copies for {} with {} runs remaining",
+                    name, runs
+                );
+
+                let produce = quantity.min(*runs);
+                *runs -= produce;
+
+                (quantity - produce, produce)
+            }
+            None => (quantity, 0),
+        };
+
+        if buy > 0 {
+            result.entry(name).and_modify(|e| *e += buy).or_insert(buy);
+        }
+
+        if produce > 0 {
+            for (material, quantity) in materials_for(&bp, produce, &mut eve_db)
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())?
+                .into_iter()
+            {
+                stack.push((material, quantity));
             }
         }
     }

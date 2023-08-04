@@ -18,7 +18,8 @@ futures = "0.3.28"
 hyper = "0.14.27"
 hyper-tls = "0.5.0"
 rand = "0.8.5"
-rfesi = "0.17.0"
+# rfesi = "0.17.0"
+rfesi = { path = "../rfesi" }
 serde = { version = "1.0.174", features = ["derive"] }
 serde_json = "1.0.104"
 serde_yaml = "0.9.25"
